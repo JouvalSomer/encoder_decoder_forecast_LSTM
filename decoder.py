@@ -1,16 +1,20 @@
-import torch
 import torch.nn as nn
 
-class DecoderLSTM(nn.Module):
-    def __init__(self, output_dim, hidden_dim, num_layers=1):
-        super(DecoderLSTM, self).__init__()
-        self.lstm = nn.LSTM(output_dim, hidden_dim, num_layers)
-        self.fc_out = nn.Linear(hidden_dim, output_dim)
+class Decoder(nn.Module):
+    def __init__(self, output_size, hidden_size, num_layers):
+        super(Decoder, self).__init__()
+        self.output_size = output_size
+
+        self.lstm = nn.LSTM(
+            input_size=output_size, 
+            hidden_size=hidden_size, 
+            num_layers=num_layers, 
+            batch_first=True
+        )
+        self.fc = nn.Linear(hidden_size, output_size)
         
-    def forward(self, input, hidden, cell):
-        # input: (1, batch_size, output_dim)
-        output, (hidden, cell) = self.lstm(input, (hidden, cell))
-        # output: (1, batch_size, hidden_dim)
-        prediction = self.fc_out(output.squeeze(0))  # prediction: (batch_size, output_dim)
-        
-        return prediction, hidden, cell
+    def forward(self, x, hidden, cell):
+        # x: (batch_size, 1, output_size)
+        out, (hidden, cell) = self.lstm(x, (hidden, cell))  # out: (batch_size, 1, hidden_size)
+        pred = self.fc(out.squeeze(1))                      # pred: (batch_size, output_size)
+        return pred, hidden, cell

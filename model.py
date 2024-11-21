@@ -1,31 +1,41 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
-
-class Seq2Seq(nn.Module):
-    def __init__(self, encoder, decoder, device):
-        super(Seq2Seq, self).__init__()
-        self.encoder = encoder  # `encoder` is an instance of EncoderLSTM
-        self.decoder = decoder  # `decoder` is an instance of DecoderLSTM
-        self.device = device
-
-    def forward(self, src, trg, teacher_forcing_ratio=0.5):
-        # src: (src_len, batch_size, input_dim)
-        # trg: (trg_len, batch_size, output_dim)
+class EncoderDecoderModel(nn.Module):
+    def __init__(self, encoder, decoder, target_len=10):
+        super(EncoderDecoderModel, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.target_len = target_len  # Set default target length
+    
+    def forward(self, src, trg=None, teacher_forcing_ratio=0.5):
+        batch_size = src.size(0)
+        if trg is not None:
+            target_len = trg.size(1)
+        else:
+            target_len = self.target_len  # Use predefined target length during evaluation
         
-        trg_len, batch_size, output_dim = trg.shape
-        outputs = torch.zeros(trg_len, batch_size, output_dim).to(self.device)
+        outputs = []
         
+        # Encode the source sequence
         hidden, cell = self.encoder(src)
         
-        input = trg[0, :, :].unsqueeze(0)  # Initial input to the decoder (first timestep)
-
-        for t in range(1, trg_len):
-            output, hidden, cell = self.decoder(input, hidden, cell)
-            outputs[t] = output
+        # Initialize decoder input as zeros
+        decoder_input = torch.zeros(batch_size, 1, self.decoder.output_size).to(src.device)
+        
+        for t in range(target_len):
+            # Pass through the decoder
+            out, hidden, cell = self.decoder(decoder_input, hidden, cell)
+            outputs.append(out.unsqueeze(1))  # Shape: (batch_size, 1, output_size)
             
             # Decide whether to use teacher forcing
-            teacher_force = torch.rand(1).item() < teacher_forcing_ratio
-            input = trg[t, :, :].unsqueeze(0) if teacher_force else output.unsqueeze(0)
+            if trg is not None and np.random.rand() < teacher_forcing_ratio:
+                # Use the actual next value as the next input
+                decoder_input = trg[:, t].unsqueeze(1)
+            else:
+                # Use the predicted value as the next input
+                decoder_input = out.unsqueeze(1)
         
+        outputs = torch.cat(outputs, dim=1)  # Shape: (batch_size, target_len, output_size)
         return outputs
