@@ -1,1 +1,1 @@
-# Seq2Seq Encoder-Decoder LSTM for Forecast
+# Encoder-Decoder LSTM for Forecast
