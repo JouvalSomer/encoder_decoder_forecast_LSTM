@@ -1,3 +1,4 @@
 # Encoder-Decoder LSTM for Forecast
 
-![alt text](./figures/lookback.png)
+![lookback](./figures/lookback.png)
+![architecture](./figures/architecture.png)
